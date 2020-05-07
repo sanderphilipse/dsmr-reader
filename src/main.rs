@@ -1,33 +1,33 @@
-extern crate serial;
+use std::io::{self, Write};
+use std::time::Duration;
 
-use std::io;
-use std::time;
+use serialport::SerialPortSettings;
 
-use serial::prelude::*;
-
+const PORT_NAME: &str = "/dev/ttyUSB0";
+const BAUD_RATE: u32 = 115200;
+const TIMEOUT: u64 = 10;
 
 fn main() {
-    let serial_device = String::from("/dev/ttyUSB0");
-    let mut port = serial::open(&serial_device).unwrap();
-    interact(&mut port).unwrap();
-}
+    let mut settings: SerialPortSettings = Default::default();
+    settings.timeout = Duration::from_millis(TIMEOUT);
+    settings.baud_rate = BAUD_RATE;
 
-fn interact<T: SerialPort>(port: &mut T) -> io::Result<()> {
-    port.reconfigure(&|settings| {
-        settings.set_baud_rate(serial::Baud115200)?;
-        settings.set_char_size(serial::Bits8);
-        settings.set_parity(serial::ParityNone);
-        settings.set_stop_bits(serial::Stop1);
-        settings.set_flow_control(serial::FlowNone);
-        Ok(())
-    })?;
+    match serialport::open_with_settings(&PORT_NAME, &settings) {
+        Ok(mut port) => {
+            let mut serial_buf: Vec<u8> = vec![0; 1000];
+            println!("Receiving data on {} at {} baud:", &PORT_NAME, &settings.baud_rate);
+            loop {
+                match port.read(serial_buf.as_mut_slice()) {
+                    Ok(t) => io::stdout().write_all(&serial_buf[..t]).unwrap(),
+                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                    Err(e) => eprintln!("{:?}", e),
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to open \"{}\". Error: {}", PORT_NAME, e);
+            ::std::process::exit(1);
+        }
+    }
 
-    port.set_timeout(time::Duration::from_millis(1000))?;
-
-    let mut buf: Vec<u8> = (0..255).collect();
-
-    port.write_all(&buf[..])?;
-    port.read_exact(&mut buf[..])?;
-
-    Ok(())
 }
