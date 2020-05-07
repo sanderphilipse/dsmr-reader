@@ -47,6 +47,7 @@ fn main() {
 }
 
 fn save_message(message: &Vec<String>) {
+    println!("Received message {:?}", message);
     for line in message {
         println!{"{}", line}
     }
