@@ -26,6 +26,7 @@ fn main() {
                             .map(|c| c.unwrap())
                             .take_while(|c| !c.starts_with("!"))
                             .collect()),
+                    Some(Ok(l)) => println!("{}", l),
                     _ => continue
                 }
             }
