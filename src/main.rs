@@ -21,7 +21,7 @@ fn main() {
             loop {
                 match lines_iter.next() {
                     Some(Ok(l)) if l.starts_with("//") => 
-                        save_message(&lines_iter
+                        save_message(lines_iter
                             .by_ref()
                             .map(|c| {
                                 let result = c.unwrap();
@@ -50,7 +50,7 @@ fn main() {
     }
 }
 
-fn save_message(message: &Vec<String>) {
+fn save_message(message: Vec<String>) {
     println!("Received message {:?}", message);
     for line in message {
         println!{"{}", line}
