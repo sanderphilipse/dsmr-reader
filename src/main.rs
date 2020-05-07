@@ -19,7 +19,7 @@ fn main() {
             println!("Receiving data on {} at {} baud:", &PORT_NAME, &settings.baud_rate);
             loop {
                 match port.read(serial_buf.as_mut_slice()) {
-                    Ok(t) => io::stdout().write_all(&serial_buf[..t]).unwrap(),
+                    Ok(t) => process_buffer(&serial_buf[..t]),
                     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                     Err(e) => eprintln!("{:?}", e),
                 }
@@ -33,11 +33,11 @@ fn main() {
 
 }
 
-fn process_buffer(buf: &Vec<u8>) {
+fn process_buffer(buf: &[u8]) {
     for byte in buf {
         match byte {
-            10 => println!("{}", "carriage return"),
-            13 => println!("{}", "newline"),
+            10 => println!("carriage return"),
+            13 => println!("newline"),
             _ => ()
         }
     }
