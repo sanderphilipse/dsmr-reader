@@ -23,10 +23,13 @@ fn main() {
                     Some(Ok(l)) if l.starts_with("//") => 
                         save_message(&lines_iter
                             .by_ref()
-                            .map(|c| c.unwrap())
+                            .map(|c| {
+                                let result = c.unwrap();
+                                println!("In line {}", result);
+                                result
+                            })
                             .take_while(|c| !c.starts_with("!"))
                             .collect()),
-                    Some(Ok(l)) => println!("{}", l),
                     _ => continue
                 }
             }
