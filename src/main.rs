@@ -1,7 +1,7 @@
-use std::io::{self, Write};
+use std::io::*;
 use std::time::Duration;
 
-use serialport::SerialPortSettings;
+use serialport::*;
 
 const PORT_NAME: &str = "/dev/ttyUSB0";
 const BAUD_RATE: u32 = 115200;
@@ -14,31 +14,41 @@ fn main() {
     settings.baud_rate = BAUD_RATE;
 
     match serialport::open_with_settings(&PORT_NAME, &settings) {
-        Ok(mut port) => {
-            let mut serial_buf: Vec<u8> = vec![0; BUFFER_SIZE];
+        Ok(port) => {
             println!("Receiving data on {} at {} baud:", &PORT_NAME, &settings.baud_rate);
+            let mut reader = BufReader::new(port);
+            let mut lines_iter = reader.by_ref().lines();
             loop {
-                match port.read(serial_buf.as_mut_slice()) {
-                    Ok(t) => process_buffer(&serial_buf[..t]),
-                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                    Err(e) => eprintln!("{:?}", e),
+                match lines_iter.next() {
+                    Some(Ok(l)) if l.starts_with("//") => 
+                        save_message(&lines_iter
+                            .by_ref()
+                            .map(|c| c.unwrap())
+                            .take_while(|c| !c.starts_with("!"))
+                            .collect()),
+                    _ => continue
                 }
             }
+            
+            
+            // loop {
+            //     let message = match lines_iter.next() {
+            //         Some(Ok(s)) if s.starts_with("//") => parse_message(lines_iter),
+            //         _ => break
+            //     };
+            //     println!("{}", message);
+            // }
         }
         Err(e) => {
             eprintln!("Failed to open \"{}\". Error: {}", PORT_NAME, e);
             ::std::process::exit(1);
         }
     }
-
 }
 
-fn process_buffer(buf: &[u8]) {
-    for byte in buf {
-        match byte {
-            10 => println!("carriage return"),
-            13 => println!("newline"),
-            _ => ()
-        }
+fn save_message(message: &Vec<String>) {
+    for line in message {
+        println!{"{}", line}
     }
 }
+
