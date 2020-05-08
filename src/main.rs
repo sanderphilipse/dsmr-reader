@@ -77,8 +77,14 @@ fn split_gas(gas: &str) -> Option<(&str, &str)> {
 fn find_message<'a>(message: &'a Vec<String>, ident: &str) -> Result<&'a str, ErrorKind> {
     let mut message_iter = message.iter();
     match message_iter.find(|m| m.starts_with(ident)) {
-        Some(s) => Ok(&s[1..s.len()]),
-        None => Err(ErrorKind::NotFound)
+        Some(s) => {
+            if let Some(offset) = &s.find('(') {
+                Ok(&s[offset+1..s.len()-1])
+            } else {
+                Err(ErrorKind::InvalidData)
+            }
+        },
+        None => Err(ErrorKind::InvalidData)
     }
 }
 
