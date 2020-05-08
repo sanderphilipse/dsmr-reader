@@ -5,8 +5,7 @@ use serialport::*;
 
 const PORT_NAME: &str = "/dev/ttyUSB0";
 const BAUD_RATE: u32 = 115200;
-const TIMEOUT: u64 = 10;
-const BUFFER_SIZE: usize = 1000;
+const TIMEOUT: u64 = 1000;
 
 fn main() {
     let mut settings: SerialPortSettings = Default::default();
