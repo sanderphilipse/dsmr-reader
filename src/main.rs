@@ -20,7 +20,7 @@ fn main() {
             let mut lines_iter = reader.by_ref().lines();
             loop {
                 match lines_iter.next() {
-                    Some(Ok(l)) if l.starts_with("//") => 
+                    Some(Ok(l)) if l.starts_with("/") => 
                         save_message(lines_iter
                             .by_ref()
                             .map(|c| {
@@ -33,15 +33,6 @@ fn main() {
                     _ => continue
                 }
             }
-            
-            
-            // loop {
-            //     let message = match lines_iter.next() {
-            //         Some(Ok(s)) if s.starts_with("//") => parse_message(lines_iter),
-            //         _ => break
-            //     };
-            //     println!("{}", message);
-            // }
         }
         Err(e) => {
             eprintln!("Failed to open \"{}\". Error: {}", PORT_NAME, e);
