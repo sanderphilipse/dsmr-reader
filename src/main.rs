@@ -1,5 +1,6 @@
 use std::io::{BufRead, BufReader, Read, ErrorKind};
 use std::time::Duration;
+use chrono::{DateTime, NaiveDateTime, FixedOffset};
 
 use serialport::{SerialPortSettings};
 
@@ -14,38 +15,35 @@ const ELECTRICITY_TIMESTAMP: &str = "0-0:1.0.0";
 const ELECTRICITY_POWER_DELIVERED: &str = "1-0:1.7.0";
 const ELECTRICITY_POWER_RECIEVED: &str = "1-0:2.7.0";
 const GAS_READING: &str = "0-1:24.2.1";
+const DATE_FORMAT: &str = "%y%m%d%H%M%S";
+const HOUR: i32 = 3600;
+const SUMMER_TIME: FixedOffset = FixedOffset::east(2 * HOUR);
+const WINTER_TIME: FixedOffset = FixedOffset::east(1 * HOUR);
 
 fn main() {
     let mut settings: SerialPortSettings = Default::default();
     settings.timeout = Duration::from_millis(TIMEOUT);
     settings.baud_rate = BAUD_RATE;
 
-    match serialport::open_with_settings(&PORT_NAME, &settings) {
-        Ok(port) => {
-            println!("Receiving data on {} at {} baud:", &PORT_NAME, &settings.baud_rate);
-            let mut reader = BufReader::new(port);
-            let mut lines_iter = reader.by_ref().lines();
-            loop {
-                match lines_iter.next() {
-                    Some(Ok(l)) if l.starts_with("/") => 
-                        save_message(lines_iter
-                            .by_ref()
-                            .map(|c| c.unwrap())
-                            .take_while(|c| !c.starts_with("!"))
-                            .collect()).unwrap(),
-                    _ => continue
-                }
-            }
-        }
-        Err(e) => {
-            eprintln!("Failed to open \"{}\". Error: {}", PORT_NAME, e);
-            ::std::process::exit(1);
+    let port = serialport::open_with_settings(&PORT_NAME, &settings).unwrap();
+    println!("Receiving data on {} at {} baud:", &PORT_NAME, &settings.baud_rate);
+    let mut reader = BufReader::new(port);
+    let mut lines_iter = reader.by_ref().lines();
+    loop {
+        match lines_iter.next() {
+            Some(Ok(l)) if l.starts_with('/') => 
+                save_message(lines_iter
+                    .by_ref()
+                    .map(|c| c.unwrap())
+                    .take_while(|c| !c.starts_with('!'))
+                    .collect()).unwrap(),
+            _ => continue
         }
     }
 }
 
 fn save_message(message: Vec<String>) -> Result<(), ErrorKind> {
-    let elec_timestamp = find_message(&message, ELECTRICITY_TIMESTAMP);
+    let elec_timestamp = NaiveDateTime::parse_from_str(find_message(&message, ELECTRICITY_TIMESTAMP)?, "");
     let elec_reading_low = find_message(&message, ELECTRICITY_READING_LOW_IDENT);
     let elec_reading_high = find_message(&message, ELECTRICITY_READING_NORMAL_IDENT);
     let elec_reading_two_low = find_message(&message, ELECTRICITY_READING_TWO_LOW_IDENT);
@@ -57,15 +55,22 @@ fn save_message(message: Vec<String>) -> Result<(), ErrorKind> {
         Some(s) => s,
         None => return Err(ErrorKind::InvalidData)
     };
-    println!("{:?}", elec_timestamp);
-    println!("{:?}", elec_reading_high);
-    println!("{:?}", elec_reading_low);
-    println!("{:?}", elec_power);
-    println!("{:?}", gas_reading);
-    println!("{:?}", gas_timestamp);
 
     Ok(())
 }
+
+fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorKind> {
+    if let Ok(naive_date) = NaiveDateTime::parse_from_str(date, fmt) {
+        let offset = match date.chars().last(){
+            Some('W') => WINTER_TIME,
+            Some('S') => SUMMER_TIME,
+            _ => return Err(ErrorKind::InvalidData)
+        };
+        return Ok(DateTime::from_utc(naive_date, offset))
+    }
+    Err(ErrorKind::InvalidData)
+}
+
 
 fn split_gas(gas: &str) -> Option<(&str, &str)> {
     let gas_offset = gas.find(')')?;
