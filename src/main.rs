@@ -33,13 +33,14 @@ async fn main() {
     let port = serialport::open_with_settings(&PORT_NAME, &settings).unwrap();
     println!("Receiving data on {} at {} baud:", &PORT_NAME, &settings.baud_rate);
     thread::spawn(|| get_meter_data(port, sender));
-    thread::spawn(|| save_meter_data(influx_db, receiver));
+    thread::spawn(|| {async { save_meter_data(influx_db, receiver).await } });
 
 }
 
 async fn save_meter_data<'a>(db: Client, receiver: mpsc::Receiver::<UsageData>) {
     loop {
         let data = receiver.recv().unwrap();
+        println!("Received message with timestamp {}", data.electricity_timestamp);
         let electricity_reading_low_tariff = create_point("electricity_reading_low_tariff", data.electricity_reading_low_tariff, data.electricity_timestamp);
         let electricity_reading_normal_tariff = create_point("electricity_reading_normal_tariff", data.electricity_reading_normal_tariff, data.electricity_timestamp);
         let electricity_returned_reading_low_tariff = create_point("electricity_returned_reading_low_tariff", data.electricity_returned_reading_low_tariff, data.electricity_timestamp);
@@ -57,7 +58,7 @@ async fn save_meter_data<'a>(db: Client, receiver: mpsc::Receiver::<UsageData>) 
             gas_reading
         );
         match db.write_points(points, Some(Precision::Milliseconds), None).await {
-            Ok(_) => continue,
+            Ok(_) => { println!("Saved message"); continue },
             Err(_) => continue
         };
     }
@@ -76,12 +77,14 @@ fn get_meter_data(port: Box<dyn serialport::SerialPort>, sender: mpsc::Sender<Us
     let mut lines_iter = reader.by_ref().lines();
     loop {
         match lines_iter.next() {
-            Some(Ok(l)) if l.starts_with('/') => 
+            Some(Ok(l)) if l.starts_with('/') => {
+                println!("Received message, parsing now");
                 sender.send(parse_message(lines_iter
                     .by_ref()
                     .map(|c| c.unwrap())
                     .take_while(|c| !c.starts_with('!'))
-                    .collect()).unwrap()).unwrap(),
+                    .collect()).unwrap()).unwrap()
+                },
             _ => continue
         }
     }
