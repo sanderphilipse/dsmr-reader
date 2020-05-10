@@ -126,7 +126,9 @@ fn parse_message(message: Vec<String>) -> Result<UsageData, ErrorKind> {
 }
 
 fn parse_measurement(value: &str) -> Result<Measurement, ErrorKind> {
+    println!("Parsing measurement {}", value);
     let deliminator = value.find('*').ok_or(ErrorKind::InvalidData)?;
+    println!("identified deliminator");
     Ok(Measurement {
         value: value[0..deliminator].parse::<f64>().map_err(|_|ErrorKind::InvalidData)?,
         unit: value[deliminator+1..value.len()].to_string()
@@ -134,6 +136,7 @@ fn parse_measurement(value: &str) -> Result<Measurement, ErrorKind> {
 }
 
 fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorKind> {
+    println!("Parsing date {}", date);
     let cest: FixedOffset = FixedOffset::east(2 * HOUR);
     let cet: FixedOffset = FixedOffset::east(HOUR);
     if let Ok(naive_date) = NaiveDateTime::parse_from_str(date, fmt) {
@@ -142,9 +145,11 @@ fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorKind>
             Some('S') => cest,
             _ => return Err(ErrorKind::InvalidData)
         };
-        return Ok(DateTime::from_utc(naive_date, offset))
+        Ok(DateTime::from_utc(naive_date, offset))
+    } else {
+        println!("Error in date parsing");
+        Err(ErrorKind::InvalidData)
     }
-    Err(ErrorKind::InvalidData)
 }
 
 
