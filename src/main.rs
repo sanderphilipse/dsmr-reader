@@ -26,15 +26,17 @@ const DEFAULT_DATABASE_NAME: &str = "smart_meter";
 #[tokio::main]
 async fn main() {
     let influx_db = setup_database(DEFAULT_DATABASE_NAME).await.unwrap();
+    println!("Successfully connected to Influx DB");
     let (sender, receiver): (Sender<UsageData>, Receiver<UsageData>) = mpsc::channel();
     let mut settings: SerialPortSettings = Default::default();
     settings.timeout = Duration::from_millis(TIMEOUT);
     settings.baud_rate = BAUD_RATE;
     let port = serialport::open_with_settings(&PORT_NAME, &settings).unwrap();
     println!("Receiving data on {} at {} baud:", &PORT_NAME, &settings.baud_rate);
-    thread::spawn(|| get_meter_data(port, sender));
-    thread::spawn(|| {async { save_meter_data(influx_db, receiver).await } });
-
+    let meter_thread = thread::spawn(|| get_meter_data(port, sender));
+    let db_thread = thread::spawn(||  save_meter_data(influx_db, receiver) );
+    meter_thread.join().unwrap();
+    db_thread.join().unwrap().await;
 }
 
 async fn save_meter_data<'a>(db: Client, receiver: mpsc::Receiver::<UsageData>) {
@@ -92,7 +94,6 @@ fn get_meter_data(port: Box<dyn serialport::SerialPort>, sender: mpsc::Sender<Us
 
 async fn setup_database(db_name: &str) -> Result<Client, influx_db_client::Error> {
     let mut client = Client::default();
-    // TODO: HANDLE ERROR
     client.switch_database(db_name);
     if !client.ping().await {
         client.create_database(DEFAULT_DATABASE_NAME).await?;
