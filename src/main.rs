@@ -154,9 +154,11 @@ fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorKind>
 
 
 fn split_gas(gas: &str) -> Result<(Measurement, DateTime<FixedOffset>), ErrorKind> {
+    println!("Parsing gas {}", gas);
     let gas_offset = gas.find(')').ok_or(ErrorKind::InvalidData)?;
     let gas_timestamp = parse_date(&gas[1..gas_offset], DATE_FORMAT)?;
     let gas_reading = parse_measurement(&gas[gas_offset+2..gas.len()])?;
+    println!("Successfully parsed gas");
     Ok((gas_reading, gas_timestamp))
 }
 
