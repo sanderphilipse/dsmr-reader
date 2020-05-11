@@ -1,10 +1,9 @@
-use std::io::{BufRead, BufReader, Read, ErrorKind};
-use std::sync::mpsc::{self, Sender};
+use std::io::{ErrorKind};
+use std::sync::mpsc::{Sender};
 use std::thread;
 
 use chrono::{DateTime, NaiveDateTime, FixedOffset, TimeZone};
-use influx_db_client::{Point, Points, Value, Client, Precision, points};
-use tokio::prelude::*;
+use influx_db_client::{Point, Points, Value, Client, points};
 
 const ELECTRICITY_READING_LOW_IDENT: &str = "1-0:1.8.1";
 const ELECTRICITY_READING_NORMAL_IDENT: &str = "1-0:1.8.2";
@@ -53,8 +52,11 @@ pub fn get_meter_data(mut lines_iter: Box<dyn Iterator<Item = String>>, sender: 
             .skip_while(|l| l.starts_with('/'))
             .take_while(|l| !l.starts_with('!'))
             .collect();
+        println!("Got meter data {:?}", message);
         let result = parse_message(message)?;
+        println!("Parsed meter data {:?}", result);
         sender.send(result).map_err(|_| ErrorKind::BrokenPipe)?;
+        println!("Sent result, parking thread");
         thread::park();
     }
 }

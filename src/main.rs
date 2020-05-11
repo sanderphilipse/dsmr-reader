@@ -30,6 +30,7 @@ async fn main() {
     println!("Created data thread");
     loop {
         let data = receiver.recv();
+        println!("Received data to save {:?}", data);
         match data {
             Ok(d) => {
                 influx_db.write_points(usage_to_points(&d).unwrap(), Some(Precision::Seconds), None).await.unwrap();
@@ -37,7 +38,7 @@ async fn main() {
             },
             Err(_) => continue
         }
-        
+        println("Unparking thread");
         data_thread.thread().unpark();
     }
 
