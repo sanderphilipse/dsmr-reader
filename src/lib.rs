@@ -17,32 +17,25 @@ const DATE_FORMAT: &str = "%y%m%d%H%M%S";
 const HOUR: i32 = 3600;
 const DEFAULT_DATABASE_NAME: &str = "smart_meter";
 
-pub async fn save_meter_data<'a>(db: Client, receiver: mpsc::Receiver::<UsageData>) -> Result<(), ErrorKind> {
-    loop {
-        let data = receiver.recv().map_err(|_| ErrorKind::Interrupted)?;
-        println!("Received message with timestamp {}", data.electricity_timestamp);
-        let electricity_reading_low_tariff = create_point("electricity_reading_low_tariff", data.electricity_reading_low_tariff, data.electricity_timestamp);
-        let electricity_reading_normal_tariff = create_point("electricity_reading_normal_tariff", data.electricity_reading_normal_tariff, data.electricity_timestamp);
-        let electricity_returned_reading_low_tariff = create_point("electricity_returned_reading_low_tariff", data.electricity_returned_reading_low_tariff, data.electricity_timestamp);
-        let electricity_returned_reading_normal_tariff = create_point("electricity_returned_reading_normal_tariff", data.electricity_returned_reading_normal_tariff, data.electricity_timestamp);
-        let power_receiving = create_point("power_receiving", data.power_receiving, data.electricity_timestamp);
-        let power_returning = create_point("power_returning", data.power_returning, data.electricity_timestamp);
-        let gas_reading = create_point("gas_reading", data.gas_reading, data.gas_timestamp);
-        let points = points!(
-            electricity_reading_low_tariff,
-            electricity_reading_normal_tariff,
-            electricity_returned_reading_low_tariff,
-            electricity_returned_reading_normal_tariff,
-            power_receiving,
-            power_returning,
-            gas_reading
-        );
-        match db.write_points(points, Some(Precision::Milliseconds), None).await {
-            Ok(_) => { println!("Saved message"); continue },
-            Err(_) => continue
-        };
-    }
-
+pub fn usage_to_points(data: UsageData) -> Result<Points, ErrorKind> {
+    println!("Received message with timestamp {}", data.electricity_timestamp);
+    let electricity_reading_low_tariff = create_point("electricity_reading_low_tariff", data.electricity_reading_low_tariff, data.electricity_timestamp);
+    let electricity_reading_normal_tariff = create_point("electricity_reading_normal_tariff", data.electricity_reading_normal_tariff, data.electricity_timestamp);
+    let electricity_returned_reading_low_tariff = create_point("electricity_returned_reading_low_tariff", data.electricity_returned_reading_low_tariff, data.electricity_timestamp);
+    let electricity_returned_reading_normal_tariff = create_point("electricity_returned_reading_normal_tariff", data.electricity_returned_reading_normal_tariff, data.electricity_timestamp);
+    let power_receiving = create_point("power_receiving", data.power_receiving, data.electricity_timestamp);
+    let power_returning = create_point("power_returning", data.power_returning, data.electricity_timestamp);
+    let gas_reading = create_point("gas_reading", data.gas_reading, data.gas_timestamp);
+    let points = points!(
+        electricity_reading_low_tariff,
+        electricity_reading_normal_tariff,
+        electricity_returned_reading_low_tariff,
+        electricity_returned_reading_normal_tariff,
+        power_receiving,
+        power_returning,
+        gas_reading
+    );
+    Ok(points)
 }
 
 fn create_point(name: &str, value: Measurement, timestamp: DateTime<FixedOffset>) -> Point {

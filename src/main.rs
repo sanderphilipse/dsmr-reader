@@ -6,6 +6,7 @@ use dsmr_reader::*;
 use serialport::{SerialPortSettings};
 use tokio::prelude::*;
 use futures::try_join;
+use influx_db_client::Precision;
 
 const PORT_NAME: &str = "/dev/ttyUSB0";
 const BAUD_RATE: u32 = 115_200;
@@ -22,7 +23,8 @@ async fn main() {
     settings.baud_rate = BAUD_RATE;
     let port = serialport::open_with_settings(&PORT_NAME, &settings).unwrap();
     println!("Receiving data on {} at {} baud:", &PORT_NAME, &settings.baud_rate);
-    let data_future = get_meter_data(port, sender);
-    let db_future = save_meter_data(influx_db, receiver);
-    try_join!(data_future, db_future).unwrap();
+    let data_thread = thread::spawn(|| get_meter_data(port, sender));
+    receiver.iter().for_each(|data| {
+        println!("{:?}", usage_to_points(data).unwrap())
+    });
 }
