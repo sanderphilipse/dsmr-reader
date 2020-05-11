@@ -27,4 +27,5 @@ async fn main() {
     receiver.iter().for_each(|data| {
         println!("{:?}", usage_to_points(data).unwrap())
     });
+    data_thread.join().unwrap().await.unwrap();
 }
