@@ -24,5 +24,5 @@ async fn main() {
     println!("Receiving data on {} at {} baud:", &PORT_NAME, &settings.baud_rate);
     let data_future = get_meter_data(port, sender);
     let db_future = save_meter_data(influx_db, receiver);
-    try_join!(data_future, db_future);
+    try_join!(data_future, db_future).unwrap();
 }
