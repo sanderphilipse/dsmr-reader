@@ -63,10 +63,10 @@ pub async fn setup_database(db_name: &str) -> Result<Client, influx_db_client::E
     client.switch_database(db_name);
     let db_exists = client.ping().await;
     println!("DB exists {}", db_exists);
-    if !db_exists {
-        client.create_database(db_name).await?;
+    match client.create_database(db_name).await {
+        Ok(_) => Ok(client),
+        Err(_) => Ok(client)
     }
-    Ok(client)
 }
 
 fn parse_message(message: Vec<String>) -> Result<UsageData, ErrorKind> {
