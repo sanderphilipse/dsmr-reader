@@ -17,15 +17,15 @@ const GAS_READING: &str = "0-1:24.2.1";
 const DATE_FORMAT: &str = "%y%m%d%H%M%S";
 const HOUR: i32 = 3600;
 
-pub fn usage_to_points(data: UsageData) -> Result<Points, ErrorKind> {
+pub fn usage_to_points(data: &UsageData) -> Result<Points, ErrorKind> {
     println!("Received message with timestamp {}", data.electricity_timestamp);
-    let electricity_reading_low_tariff = create_point("electricity_reading_low_tariff", data.electricity_reading_low_tariff, data.electricity_timestamp);
-    let electricity_reading_normal_tariff = create_point("electricity_reading_normal_tariff", data.electricity_reading_normal_tariff, data.electricity_timestamp);
-    let electricity_returned_reading_low_tariff = create_point("electricity_returned_reading_low_tariff", data.electricity_returned_reading_low_tariff, data.electricity_timestamp);
-    let electricity_returned_reading_normal_tariff = create_point("electricity_returned_reading_normal_tariff", data.electricity_returned_reading_normal_tariff, data.electricity_timestamp);
-    let power_receiving = create_point("power_receiving", data.power_receiving, data.electricity_timestamp);
-    let power_returning = create_point("power_returning", data.power_returning, data.electricity_timestamp);
-    let gas_reading = create_point("gas_reading", data.gas_reading, data.gas_timestamp);
+    let electricity_reading_low_tariff = create_point("electricity_reading_low_tariff", &data.electricity_reading_low_tariff, data.electricity_timestamp);
+    let electricity_reading_normal_tariff = create_point("electricity_reading_normal_tariff", &data.electricity_reading_normal_tariff, data.electricity_timestamp);
+    let electricity_returned_reading_low_tariff = create_point("electricity_returned_reading_low_tariff", &data.electricity_returned_reading_low_tariff, data.electricity_timestamp);
+    let electricity_returned_reading_normal_tariff = create_point("electricity_returned_reading_normal_tariff", &data.electricity_returned_reading_normal_tariff, data.electricity_timestamp);
+    let power_receiving = create_point("power_receiving", &data.power_receiving, data.electricity_timestamp);
+    let power_returning = create_point("power_returning", &data.power_returning, data.electricity_timestamp);
+    let gas_reading = create_point("gas_reading", &data.gas_reading, data.gas_timestamp);
     let points = points!(
         electricity_reading_low_tariff,
         electricity_reading_normal_tariff,
@@ -38,11 +38,11 @@ pub fn usage_to_points(data: UsageData) -> Result<Points, ErrorKind> {
     Ok(points)
 }
 
-fn create_point(name: &str, value: Measurement, timestamp: DateTime<FixedOffset>) -> Point {
+fn create_point(name: &str, value: &Measurement, timestamp: DateTime<FixedOffset>) -> Point {
     Point::new(name)
         .add_timestamp(timestamp.timestamp())
         .add_field("value", Value::Float(value.value))
-        .add_tag("unit", Value::String(value.unit))
+        .add_tag("unit", Value::String(value.unit.clone()))
 }
 
 pub fn get_meter_data(mut lines_iter: Box<dyn Iterator<Item = String>>, sender: Sender<UsageData>) -> Result<(), ErrorKind> {
@@ -184,6 +184,7 @@ fn find_message<'a>(message: &'a [String], ident: &str) -> Result<&'a str, Error
     }
 }
 
+#[derive(Debug)]
 pub struct UsageData {
     electricity_timestamp: DateTime<FixedOffset>,
     power_receiving: Measurement,
