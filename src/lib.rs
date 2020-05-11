@@ -117,9 +117,13 @@ fn parse_measurement(value: &str) -> Result<Measurement, ErrorKind> {
 /// ```
 /// # use chrono::{FixedOffset, TimeZone};
 /// # fn main() -> Result<(), std::io::Error> {
-/// let parsed_date = dsmr_reader::parse_date("200507112856S", "%y%m%d%H%M%S")?;
+/// let dst_date = dsmr_reader::parse_date("200507112856S", "%y%m%d%H%M%S")?;
 /// let date = FixedOffset::east(2*3600).ymd(2020, 5, 7).and_hms(11, 28, 56);
-/// assert_eq!(date, parsed_date);
+/// assert_eq!(date, dst_date);
+/// 
+/// let nondst_date = dsmr_reader::parse_date("200507112856W", "%y%m%d%H%M%S")?;
+/// let date = FixedOffset::east(3600).ymd(2020, 5, 7).and_hms(11, 28, 56);
+/// assert_eq!(date, nondst_date);
 /// # Ok(())
 /// # }
 /// ```
@@ -145,11 +149,34 @@ pub fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorK
     }
 }
 
+/// Parse DSMR 4's gas reading
+/// 
+/// Gas arrives formatted without initial opening bracket because find_message
+/// strips that bracket.
+/// 
+/// ```
+/// # use chrono::{FixedOffset, TimeZone};
+/// # use dsmr_reader::Measurement;
+/// # fn main() -> Result<(), std::io::Error> {
+/// let gas = "200511123008S)(01643.122*m3";
+/// let gas_date = FixedOffset::east(2*3600).ymd(2020, 5, 11).and_hms(12, 30, 08);
+/// let gas_reading = Measurement {
+///   value: 01643.122,
+///   unit: "m3".to_string()
+/// };
+/// let parsed_gas = dsmr_reader::split_gas(gas);
+/// 
+/// 
+/// assert_eq!(parsed_gas, Ok((gas_reading, gas_date)));
+/// 
+/// # Ok(())
+/// # }
+/// ```
 
-fn split_gas(gas: &str) -> Result<(Measurement, DateTime<FixedOffset>), ErrorKind> {
+pub fn split_gas(gas: &str) -> Result<(Measurement, DateTime<FixedOffset>), ErrorKind> {
     println!("Parsing gas {}", gas);
     let gas_offset = gas.find(')').ok_or(ErrorKind::InvalidData)?;
-    let gas_timestamp = parse_date(&gas[1..gas_offset], DATE_FORMAT)?;
+    let gas_timestamp = parse_date(&gas[0..gas_offset], DATE_FORMAT)?;
     let gas_reading = parse_measurement(&gas[gas_offset+2..gas.len()])?;
     println!("Successfully parsed gas");
     Ok((gas_reading, gas_timestamp))
@@ -181,7 +208,8 @@ pub struct UsageData {
     gas_timestamp: DateTime<FixedOffset>
 }
 
-struct Measurement {
-    value: f64,
-    unit: String
+#[derive(Debug, PartialEq)]
+pub struct Measurement {
+    pub value: f64,
+    pub unit: String
 }
