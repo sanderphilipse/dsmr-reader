@@ -1,3 +1,4 @@
+use std::io::{BufRead, BufReader, Read, ErrorKind};
 use std::time::Duration;
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
@@ -23,9 +24,14 @@ async fn main() {
     settings.baud_rate = BAUD_RATE;
     let port = serialport::open_with_settings(&PORT_NAME, &settings).unwrap();
     println!("Receiving data on {} at {} baud:", &PORT_NAME, &settings.baud_rate);
-    let data_thread = thread::spawn(|| get_meter_data(port, sender));
-    receiver.iter().for_each(|data| {
-        println!("{:?}", usage_to_points(data).unwrap())
-    });
-    data_thread.join().unwrap().await.unwrap();
+    let data_iter = BufReader::new(port).lines().map(|l| l.unwrap());
+    let data_thread = thread::spawn(|| get_meter_data(Box::new(data_iter), sender));
+    loop {
+        receiver.iter().for_each(|data| {
+            println!("{:?}", usage_to_points(data).unwrap())
+        });
+        data_thread.thread().unpark();
+    }
+
+    data_thread.join().unwrap();
 }

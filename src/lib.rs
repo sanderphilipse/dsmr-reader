@@ -1,5 +1,6 @@
 use std::io::{BufRead, BufReader, Read, ErrorKind};
-use std::sync::mpsc::{self};
+use std::sync::mpsc::{self, Sender};
+use std::thread;
 
 use chrono::{DateTime, NaiveDateTime, FixedOffset, TimeZone};
 use influx_db_client::{Point, Points, Value, Client, Precision, points};
@@ -45,21 +46,16 @@ fn create_point(name: &str, value: Measurement, timestamp: DateTime<FixedOffset>
         .add_tag("unit", Value::String(value.unit))
 }
 
-pub async fn get_meter_data(port: Box<dyn serialport::SerialPort>, sender: mpsc::Sender<UsageData> ) -> Result<(), ErrorKind> {
-    let mut reader = BufReader::new(port);
-    let mut lines_iter = reader.by_ref().lines();
+pub fn get_meter_data(mut lines_iter: Box<dyn Iterator<Item = String>>, sender: Sender<UsageData>) -> Result<(), ErrorKind> {
     loop {
-        match lines_iter.next() {
-            Some(Ok(l)) if l.starts_with('/') => {
-                println!("Received message, parsing now");
-                sender.send(parse_message(lines_iter
-                    .by_ref()
-                    .map(|c| c.unwrap())
-                    .take_while(|c| !c.starts_with('!'))
-                    .collect())?).map_err(|_| ErrorKind::InvalidData)?
-                },
-            _ => continue
-        }
+        let message = lines_iter
+            .by_ref()
+            .skip_while(|l| l.starts_with('/'))
+            .take_while(|l| !l.starts_with('!'))
+            .collect();
+        let result = parse_message(message)?;
+        sender.send(result).map_err(|_| ErrorKind::BrokenPipe)?;
+        thread::park();
     }
 }
 
