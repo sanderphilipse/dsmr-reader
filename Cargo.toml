@@ -1,5 +1,5 @@
 [package]
-name = "dsmr-reader"
+name = "dsmr_reader"
 version = "0.1.0"
 authors = ["sanderphilipse <sander.philipse@essent.nl>"]
 edition = "2018"
