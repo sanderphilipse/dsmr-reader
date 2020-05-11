@@ -27,9 +27,9 @@ async fn main() {
     let data_iter = BufReader::new(port).lines().map(|l| l.unwrap());
     let data_thread = thread::spawn(|| get_meter_data(Box::new(data_iter), sender));
     loop {
-        receiver.iter().for_each(|data| {
-            println!("{:?}", usage_to_points(data).unwrap())
-        });
+        let data = usage_to_points(receiver.iter().next().unwrap()).unwrap();
+        println!("{:?}", data);
+        influx_db.write_points(data, Some(Precision::Seconds), None).await.unwrap();
         data_thread.thread().unpark();
     }
 
