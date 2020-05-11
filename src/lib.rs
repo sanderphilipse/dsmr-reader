@@ -17,9 +17,9 @@ const DATE_FORMAT: &str = "%y%m%d%H%M%S";
 const HOUR: i32 = 3600;
 const DEFAULT_DATABASE_NAME: &str = "smart_meter";
 
-pub async fn save_meter_data<'a>(db: Client, receiver: mpsc::Receiver::<UsageData>) {
+pub async fn save_meter_data<'a>(db: Client, receiver: mpsc::Receiver::<UsageData>) -> Result<(), ErrorKind> {
     loop {
-        let data = receiver.recv().unwrap();
+        let data = receiver.recv().map_err(|_| ErrorKind::Interrupted)?;
         println!("Received message with timestamp {}", data.electricity_timestamp);
         let electricity_reading_low_tariff = create_point("electricity_reading_low_tariff", data.electricity_reading_low_tariff, data.electricity_timestamp);
         let electricity_reading_normal_tariff = create_point("electricity_reading_normal_tariff", data.electricity_reading_normal_tariff, data.electricity_timestamp);
@@ -52,7 +52,7 @@ fn create_point(name: &str, value: Measurement, timestamp: DateTime<FixedOffset>
         .add_tag("unit", Value::String(value.unit))
 }
 
-pub fn get_meter_data(port: Box<dyn serialport::SerialPort>, sender: mpsc::Sender<UsageData> ) {
+pub async fn get_meter_data(port: Box<dyn serialport::SerialPort>, sender: mpsc::Sender<UsageData> ) -> Result<(), ErrorKind> {
     let mut reader = BufReader::new(port);
     let mut lines_iter = reader.by_ref().lines();
     loop {
@@ -63,7 +63,7 @@ pub fn get_meter_data(port: Box<dyn serialport::SerialPort>, sender: mpsc::Sende
                     .by_ref()
                     .map(|c| c.unwrap())
                     .take_while(|c| !c.starts_with('!'))
-                    .collect()).unwrap()).unwrap()
+                    .collect())?).map_err(|_| ErrorKind::InvalidData)?
                 },
             _ => continue
         }
@@ -104,9 +104,7 @@ fn parse_message(message: Vec<String>) -> Result<UsageData, ErrorKind> {
 }
 
 fn parse_measurement(value: &str) -> Result<Measurement, ErrorKind> {
-    println!("Parsing measurement {}", value);
     let deliminator = value.find('*').ok_or(ErrorKind::InvalidData)?;
-    println!("identified deliminator");
     Ok(Measurement {
         value: value[0..deliminator].parse::<f64>().map_err(|_|ErrorKind::InvalidData)?,
         unit: value[deliminator+1..value.len()].to_string()
