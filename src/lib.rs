@@ -16,7 +16,6 @@ const ELECTRICITY_POWER_RECEIVED: &str = "1-0:2.7.0";
 const GAS_READING: &str = "0-1:24.2.1";
 const DATE_FORMAT: &str = "%y%m%d%H%M%S";
 const HOUR: i32 = 3600;
-const DEFAULT_DATABASE_NAME: &str = "smart_meter";
 
 pub fn usage_to_points(data: UsageData) -> Result<Points, ErrorKind> {
     println!("Received message with timestamp {}", data.electricity_timestamp);
@@ -55,15 +54,17 @@ pub fn get_meter_data(mut lines_iter: Box<dyn Iterator<Item = String>>, sender: 
             .collect();
         let result = parse_message(message)?;
         sender.send(result).map_err(|_| ErrorKind::BrokenPipe)?;
-        // thread::park();
+        thread::park();
     }
 }
 
 pub async fn setup_database(db_name: &str) -> Result<Client, influx_db_client::Error> {
     let mut client = Client::default();
     client.switch_database(db_name);
-    if !client.ping().await {
-        client.create_database(DEFAULT_DATABASE_NAME).await?;
+    let db_exists = client.ping().await;
+    println!("DB exists {}", db_exists);
+    if !db_exists {
+        client.create_database(db_name).await?;
     }
     Ok(client)
 }
