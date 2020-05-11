@@ -38,7 +38,7 @@ async fn main() {
             },
             Err(_) => continue
         }
-        println("Unparking thread");
+        println!("Unparking thread");
         data_thread.thread().unpark();
     }
 
