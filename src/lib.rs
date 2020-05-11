@@ -55,7 +55,7 @@ pub fn get_meter_data(mut lines_iter: Box<dyn Iterator<Item = String>>, sender: 
             .collect();
         let result = parse_message(message)?;
         sender.send(result).map_err(|_| ErrorKind::BrokenPipe)?;
-        thread::park();
+        // thread::park();
     }
 }
 
