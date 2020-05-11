@@ -46,6 +46,7 @@ fn create_point(name: &str, value: &Measurement, timestamp: DateTime<FixedOffset
 }
 
 pub fn get_meter_data(mut lines_iter: Box<dyn Iterator<Item = String>>, sender: Sender<UsageData>) -> Result<(), ErrorKind> {
+    println!("Reading meter data");
     loop {
         let message = lines_iter
             .by_ref()

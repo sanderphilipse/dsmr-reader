@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader, Read, ErrorKind};
+use std::io::{BufRead, BufReader};
 use std::time::Duration;
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
@@ -6,13 +6,13 @@ use dsmr_reader::*;
 
 use serialport::{SerialPortSettings};
 use tokio::prelude::*;
-use futures::try_join;
 use influx_db_client::Precision;
 
 const PORT_NAME: &str = "/dev/ttyUSB0";
 const BAUD_RATE: u32 = 115_200;
 const TIMEOUT: u64 = 1000;
 const DEFAULT_DATABASE_NAME: &str = "smart_meter";
+const BUFFER_SIZE: usize = 60;
 
 #[tokio::main]
 async fn main() {
@@ -25,7 +25,9 @@ async fn main() {
     let port = serialport::open_with_settings(&PORT_NAME, &settings).unwrap();
     println!("Receiving data on {} at {} baud:", &PORT_NAME, &settings.baud_rate);
     let data_iter = BufReader::new(port).lines().map(|l| l.unwrap());
+    println!("Created iterator");
     let data_thread = thread::spawn(|| get_meter_data(Box::new(data_iter), sender));
+    println!("Created data thread");
     loop {
         let data = receiver.recv();
         match data {
@@ -39,5 +41,4 @@ async fn main() {
         data_thread.thread().unpark();
     }
 
-    data_thread.join().unwrap();
 }
