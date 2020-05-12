@@ -1,6 +1,8 @@
 use std::io::{ErrorKind};
 use std::sync::mpsc::{Sender};
 use std::thread;
+use std::error::Error;
+use reqwest::Url;
 
 use chrono::{DateTime, NaiveDateTime, FixedOffset, TimeZone};
 use influx_db_client::{Point, Points, Value, Client, points};
@@ -61,14 +63,18 @@ pub fn get_meter_data(mut lines_iter: Box<dyn Iterator<Item = String>>, sender: 
     }
 }
 
-pub async fn setup_database(db_name: &str) -> Result<Client, influx_db_client::Error> {
-    let mut client = Client::default();
-    client.switch_database(db_name);
+
+pub async fn setup_database(host: &str, port: &str, name: &str) -> Result<Client, Box<dyn Error>> {
+    let url = Url::parse(&format!("{}:{}", host, port))?;
+    let mut client = Client::new(url, name);
+    client.switch_database(name);
     let db_exists = client.ping().await;
-    println!("DB exists {}", db_exists);
-    match client.create_database(db_name).await {
+    if !db_exists {
+        return Err(Box::new(influx_db_client::Error::Communication(String::from("Cannot connect to Influx DB"))))
+    }
+    match client.create_database(name).await {
         Ok(_) => Ok(client),
-        Err(_) => Ok(client)
+        Err(e) => Err(Box::new(e))
     }
 }
 
