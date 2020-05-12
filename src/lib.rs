@@ -51,12 +51,11 @@ pub fn get_meter_data(mut lines_iter: Box<dyn Iterator<Item = String>>, sender: 
     loop {
         let message = lines_iter
             .by_ref()
-            .skip_while(|l| l.starts_with('/'))
+            .skip_while(|l| !l.starts_with('/'))
             .take_while(|l| !l.starts_with('!'))
             .collect();
         println!("Got meter data {:?}", message);
         let result = parse_message(message)?;
-        println!("Parsed meter data {:?}", result);
         sender.send(result).map_err(|_| ErrorKind::BrokenPipe)?;
         println!("Sent result, parking thread");
         thread::park();
@@ -126,7 +125,6 @@ fn parse_measurement(value: &str) -> Result<Measurement, ErrorKind> {
 /// ```
 
 pub fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorKind> {
-    println!("Parsing date {}", date);
     let cest: FixedOffset = FixedOffset::east(2 * HOUR);
     let cet: FixedOffset = FixedOffset::east(HOUR);
     if let Ok(naive_date) = NaiveDateTime::parse_from_str(&date[0..date.len()-1], fmt) {
@@ -171,11 +169,9 @@ pub fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorK
 /// ```
 
 pub fn split_gas(gas: &str) -> Result<(Measurement, DateTime<FixedOffset>), ErrorKind> {
-    println!("Parsing gas {}", gas);
     let gas_offset = gas.find(')').ok_or(ErrorKind::InvalidData)?;
     let gas_timestamp = parse_date(&gas[0..gas_offset], DATE_FORMAT)?;
     let gas_reading = parse_measurement(&gas[gas_offset+2..gas.len()])?;
-    println!("Successfully parsed gas");
     Ok((gas_reading, gas_timestamp))
 }
 
