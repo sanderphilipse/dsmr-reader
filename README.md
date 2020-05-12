@@ -5,3 +5,7 @@
 ## Usage
 
 Build the binary ('cargo build --release') and run it.  By default the reader will read from /dev/ttyUSB0 and write to an InfluxDB on localhost:8086 with database name 'smart_meter'. You can specify specific configuration options with --dbhost, --dbport, --dbname and --serialdevice.
+
+## License
+
+This project is licensed under the [MIT license](LICENSE).
